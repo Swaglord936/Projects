@@ -1,0 +1,71 @@
+"""
+Instructions: 
+Every year, American high school students take SATs, which are standardized tests intended to measure literacy, numeracy, and writing skills. There are three sections - reading, math, and writing, each with a maximum score of 800 points. These tests are extremely important for students and colleges, as they play a pivotal role in the admissions process.
+
+Analyzing the performance of schools is important for a variety of stakeholders, including policy and education professionals, researchers, government, and even parents considering which school their children should attend.
+
+You have been provided with a dataset called schools.csv, which is previewed below.
+
+You have been tasked with answering three key questions about New York City (NYC) public school SAT performance.
+"""
+
+# Re-run this cell 
+import pandas as pd
+import numpy as np
+
+# Read in the data
+schools = pd.read_csv("schools.csv")
+
+# Preview the data
+schools.head()
+print(schools.columns)
+# Start coding here...
+# Add as many cells as you like...
+
+#Threshold for best is 0.8(800)=640 points for math
+#We pretty much only care about "average_math" and "school name"
+best_schools=schools[schools["average_math"]>=640].sort_values(by="average_math",ascending=False)
+best_math_schools=best_schools.loc[:,["school_name","average_math"]]
+
+
+
+
+#Save results:
+schools["total_SAT"]=schools[["average_math","average_reading","average_writing"]].sum(axis=1)
+top_schools=schools.loc[:,["school_name","total_SAT"]].sort_values(by="total_SAT",ascending=False)
+top_10_schools=top_schools.head(10)
+print(top_10_schools)
+
+print(len(top_10_schools))
+print(top_10_schools.shape)
+
+#Alright,a little trickier this time. Now we gotta sort by burough total_SAT, trim to top std_dev and round to 2 decimals 
+#Lets first make the cols asked which are not in the df come to life
+borough_counts=schools["borough"].value_counts()
+
+#1)num_schools
+schools["num_schools"]=schools["borough"].map(borough_counts)
+
+#check if correct
+print(schools[["borough","num_schools"]])
+#Success
+
+#2)average_SAT
+"""
+#Ok basically my challenge is finding out how to run the mean of the total_SAT col for rows were borough has the same value. So mean in "total_SAT" as a new column with the borough condition
+"""
+
+#Learned a new method, transform. So, translating df["borough_avg_score"] = df.groupby("borough")["score"].transform("mean"), this says: create groups of borough value and select total_SAT from it. Then "transform" makes sure the output the same row number as the original database from which you extracted. Lastly, output the mean of those groups as a new col called "borough_avg_score" in the df. 
+schools["average_SAT"]=schools.groupby("borough")["total_SAT"].transform("mean")
+#Success
+
+#3)std_SAT
+schools["std_SAT"]=schools.groupby("borough")["total_SAT"].transform("std")
+schools=schools.round(2).sort_values("std_SAT",ascending=False)
+print(schools)
+#Success
+largest_std_dev=schools[["borough","num_schools","average_SAT","std_SAT"]].iloc[[0]]
+
+print(largest_std_dev)
+
+#Project finished.
