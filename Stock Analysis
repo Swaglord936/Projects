@@ -1,0 +1,298 @@
+#Made in Google Colab
+#@title Packages
+#numpy, seaborn, matplotlib, pandas already installed in collab
+!pip install yfinance
+
+#@title Stock Analysis Script
+from datetime import datetime,date
+import yfinance as yf
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+start_date=datetime(year=2023,month=1,day=1)
+end_date=datetime(year=2025,month=12,day=31)
+
+#stocks is a list of ticker symbols used to retrieve market data
+#Whereas tickers is an arg that lets in all stock names to retrieve data from
+stocks=["AAPL", "MSFT", "GOOGL", "TSLA", "JNJ", "KO"]
+
+df = yf.download(
+    tickers=stocks,
+    start=start_date,
+    end=end_date,
+    interval="1d",
+    group_by="ticker",
+    auto_adjust=True,
+    progress=False
+)
+#df
+print(df.columns)
+#This is still a df, its just it has 2 levels. So if I wanted a specific col, it would be: df.loc[:,("TSLA","Open")]
+
+
+#Now we use this thing called xs to cut 1 level (Price="Close"). Its so its easier to select/subset, in plot for example.
+df_close = df.xs("Close",axis=1,level="Price")
+
+# initialize a new figure
+plt.figure(figsize=(14, 7))
+sns.set(style="whitegrid")
+
+#for tick in "Ticker":
+  #Plotting closing price for each
+sns.lineplot(data=df_close,linewidth=2)
+
+
+#title and labels
+plt.title(
+  f"Stock Closing Prices ("
+  f"{start_date.strftime('%Y-%m-%d')} "
+  f"to {end_date.strftime('%Y-%m-%d')})"
+)
+
+# set the plot labels
+plt.xlabel("Date")
+plt.ylabel("Closing Price ($)")
+
+# finish constructing the plot
+plt.tight_layout()
+plt.show()
+
+"""
+#Lets ask some questions, that way we can figure out how to move from now on:
+1->Top growers?
+Seems like Tesla grew the most. Comparing start to end. Although Msft is higher, Tesla is about the same in endpoint but had a smaller startpoint
+2->Top volatility?
+Tesla also seems more volatile
+3->Are any moving together?
+Just by looking, APPL and GOOGL move together. Different magnitudes but about same trend ans shape
+"""
+#These are all subjective observations, we need to prove them:
+"""
+1. Maybe top CAGR or simple growth (start to end date?
+2. Can be answered change in growth rates
+3. This one is more tricky. Maybe correlation?
+
+Applying metrics
+1. CAGR is to 1/n power, where n is years. Data is daily so we must covert to years
+"""
+days= (end_date-start_date).days
+n=days/365
+n
+V_i=df_close.iloc[0]
+V_f=df_close.iloc[-1]
+
+CAGR = ((V_f)/(V_i))**(1/n)-1
+#CAGRs
+print(CAGR)
+#With that annual growth Tesla cuadrupled its value in 3 years, wow.
+print((1+CAGR)**3)
+#1 is proved. Tesla grew the most followed by Google
+
+"""
+2. Now change in growth rates
+Lets start with returns, pd.pct_change() then we can see the movements with st deviation.
+"""
+#I used to think each op needed to be specified on which col, pandas is vectorwise
+returns=df_close.pct_change()
+print(returns)
+
+Volatility=returns.std()
+print(Volatility)
+#Tesla again number 1. Its daily return deviates from the daily mean by 3.8% on average.
+
+
+Correlation=df_close.corr()
+Correlation
+#Seems like google has strong correlation with tesla and apple (0.8).
+#Tesla has weaker corr with microsoft, 0.6. But the other combinations between tesla apple and microsoft still show 0.8.
+
+
+
+#Ok, since my steps seem to work might as well make them reusable with functions:
+
+def get_data(stocks,start_date,end_date):
+
+  df = yf.download(
+      tickers=stocks,
+      start=start_date,
+      end=end_date,
+      interval="1d",
+      group_by="ticker",
+      auto_adjust=True,
+      progress=False
+  )
+  return df.xs("Close",axis=1,level="Price")
+
+def compute_CAGR(df_close,start_date,end_date):
+  days= (end_date-start_date).days
+  n=days/365
+  V_i=df_close.iloc[0]
+  V_f=df_close.iloc[-1]
+  return ((V_f)/(V_i))**(1/n)-1
+
+def compute_returns(df_close):
+  return df_close.pct_change()
+
+def compute_volatility(returns):
+  return returns.std()
+
+def compute_correlation(df_close):
+  return df_close.corr()
+
+#Lets add some finance specific metrics:
+#Sharpe Ratio
+"""
+If I understand the Sharpe Ratio correctly, it measures the extra returns you get from assuming risk. So if I have 2 options for mfilling in my portfolio:
+Add investments on a treasury bond which is basically 0 risk or add investments on something that is non-zero risk, how much more do I earn if
+I add any risk to my portfolio?
+
+[(Portfolio with Risk Return)-(Risk-Free Return)]/(Standard Deviation of Portfolio Excess Returns)
+"""
+
+"""
+Following that idea:
+Sharp Ratio = [(Rp)-(Rf)]/(SDp)
+
+-My daily returns from "compute returns" would be Rp
+-For Rf we assume the returns of a risk free assets of treasury bills or bonds.
+I prefer using bills given they are short term so less prone to be affected by macro scenarios. Especially with today´s
+administration (Yikes).
+According to Bloomberg.com (So yes, im getting the composite of trasury bills not a real yield since I want the general case),
+ 3 month and 12 month bills have both a yield of 3.67% (Huh, interesting. ). Those are
+tickers GB3:GOV nad GB12:GOV respectively. The 6 month one gives 3.7% so it holds, we´ll use the 12 month yield of 3.67%.
+I could get the data for bonds and bills from FRED but I dont want to complicate myself too much.
+"""
+rp=compute_returns(df_close).mean()
+#print(rp)
+rf=0.037
+
+SD= compute_volatility(compute_returns(df_close))
+#print(SD)
+
+#Now all but rf are daily numbers. So we can convert all to either daily or yearly. Will do all to daily.
+rf0=0.0367 #Alright, thats annual ratio and we have 252 trading days
+"""
+ra will be annual risk rate, and rd will be daily risk rate (goal)
+We know: ra=1+0.0367
+And: ra=(1+rd)**(252)
+thus: 1+0.0367=(1+rd)**(252)
+root of 252: (1+0.0367)**(1/252)=1+rd
+so: 1.0367**(1/252)-1=rd
+Thus we have rd.
+Will become our new rf.
+"""
+rf=(1+rf0)**(1/252)-1
+print("Risk free return: ", rf)
+
+
+sharpe_ratio=(rp-rf)/SD
+
+print(sharpe_ratio)
+
+annualized_sharpe=(sharpe_ratio)*(252**(1/2))
+print("The annualized ratios are: ", annualized_sharpe)
+
+"""
+Sharpe Ratios:
+AAPL     0.064923
+JNJ      0.021816
+GOOGL    0.090576
+KO       0.017581
+TSLA     0.065529
+MSFT     0.064440
+
+Annualized Sharpe Ratios:
+AAPL     1.030621
+JNJ      0.346312
+KO       0.279092
+GOOGL    1.437854
+TSLA     1.040234
+MSFT     1.022952
+dtype: float64
+
+Overall all beat the risk free option (tresury bill). 
+However, this measure is not very useful by itself, its most useful when you have many to compare.
+Ok, the highest daily ratio is 0.9. But annualized helps see a better picture. Google has the best one, no cap. 
+So far we can see the best tradeoff returnwise, Google. 
+Now, although we can see how efficient a stock is with addition of a risk unit it would still be on our interest to see
+how much risk we are adding.
+
+For that we can check volatility.
+Ticker
+JNJ      0.010846
+AAPL     0.016137
+GOOGL    0.019083
+KO       0.009279
+TSLA     0.037856
+MSFT     0.014624
+dtype: float64
+
+So each of these stocks deviate 1-2% from their mean daily. Except TESLA, which does so by about 3.8%.
+Hm, daily data is not clear enough, lets do annual.
+
+
+"""
+#Maz drawdown
+#Rolling Volatility
+
+print("Mean daily returns:")
+print(returns.mean())
+
+print("\nDaily volatility:")
+print(returns.std())
+
+print("\nAnnual volatility:")
+print(returns.std()*(252)**(1/2))
+
+#Now for correlations: 
+Correlations= compute_correlation(df_close)
+print( "These are the correlations",Correlations)
+
+#Hmm, highly correlated assets. Well except jnj and ko.
+#So google has the highest return, medium to high volatility and high correlation.
+
+"""
+Annual volatility:
+Ticker
+AAPL     0.256162
+JNJ      0.172182
+GOOGL    0.302937
+TSLA     0.600945
+KO       0.147304
+MSFT     0.232144
+dtype: float64
+
+Way more clear. Looks like TSLA has extremely high volatility. Google is second.
+
+SO...
+Google, as seen by Sharpe ratio, offers the best risk adjusted returns. 
+Tesla, although not as much, provides high risk adjusted returns but with higher risk (Recall volatility being the highest).
+However, given Google´s high correlation with the other tech stocks make it hard to add diversification.
+So google would be my number 1 choice for portfolio in terms of efficiency. Adding other tech stocks 
+might help diversify still, but very little given high correlation. 
+KO and JNJ, although less efficient returnwise, might still play a role reducing portfolio risk given lower correlation
+through diversification.
+"""
+#sns.scatterplot(data=df_close,x=returns["GOOGL"].std()*252**(1/2),y=returns["GOOGL"].mean()*252)
+risk = returns.std() * (252 ** 0.5)
+ret = returns.mean() * 252
+sns.scatterplot(x=risk,y=ret)
+
+for ticker in risk.index:
+  plt.annotate(ticker,(risk[ticker],ret[ticker]))
+
+
+#title and labels
+plt.title(
+  f"Annual Stock Risk vs Return ("
+)
+
+# set the plot labels
+plt.xlabel("Risk")
+plt.ylabel("Average Return")
+plt.show()
+
+#This graph helps visualize the Sharpe ratios. Shows risk adjusted return, and help visualize why Google
+#has the best ratio.It has way more return than risk taken whereas although Tesla gives more 
+#return, it makes you assume way more risk. Almost as much risk in proportion to return.
+
