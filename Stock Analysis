@@ -4,6 +4,17 @@
 !pip install yfinance
 
 #@title Stock Analysis Script
+
+#I find both investments and the stock market interesting and of vital knowledge, so I thought it 
+#would be worthwhile to practice some skills in coding and finance doing a simple stock analysis.
+#For it, we are using yahoo finance's yfinance module. And my sample is relatively arbitrary
+#I chose them for no particular reason but making sure I had enough data for all of the tickers.
+#As a side note, I will not be accounting for dividends when calculating returns. 
+
+#The main 2 questions I want to answer with my analysis is:
+#"Is it worthwhile to make a portfolio solely on returns?" and "Which stock gives the best returns relative to risk?"
+
+
 from datetime import datetime,date
 import yfinance as yf
 import seaborn as sns
@@ -210,10 +221,10 @@ TSLA     1.040234
 MSFT     1.022952
 dtype: float64
 
-Overall all beat the risk free option (tresury bill). 
+Overall all beat the risk free option (tresury bill).
 However, this measure is not very useful by itself, its most useful when you have many to compare.
-Ok, the highest daily ratio is 0.9. But annualized helps see a better picture. Google has the best one, no cap. 
-So far we can see the best tradeoff returnwise, Google. 
+Ok, the highest daily ratio is 0.9. But annualized helps see a better picture. Google has the best one, no cap.
+So far we can see the best tradeoff returnwise, Google.
 Now, although we can see how efficient a stock is with addition of a risk unit it would still be on our interest to see
 how much risk we are adding.
 
@@ -232,8 +243,7 @@ Hm, daily data is not clear enough, lets do annual.
 
 
 """
-#Maz drawdown
-#Rolling Volatility
+
 
 print("Mean daily returns:")
 print(returns.mean())
@@ -244,7 +254,7 @@ print(returns.std())
 print("\nAnnual volatility:")
 print(returns.std()*(252)**(1/2))
 
-#Now for correlations: 
+#Now for correlations:
 Correlations= compute_correlation(df_close)
 print( "These are the correlations",Correlations)
 
@@ -265,11 +275,11 @@ dtype: float64
 Way more clear. Looks like TSLA has extremely high volatility. Google is second.
 
 SO...
-Google, as seen by Sharpe ratio, offers the best risk adjusted returns. 
+Google, as seen by Sharpe ratio, offers the best risk adjusted returns.
 Tesla, although not as much, provides high risk adjusted returns but with higher risk (Recall volatility being the highest).
 However, given Google´s high correlation with the other tech stocks make it hard to add diversification.
-So google would be my number 1 choice for portfolio in terms of efficiency. Adding other tech stocks 
-might help diversify still, but very little given high correlation. 
+So google would be my number 1 choice for portfolio in terms of efficiency. Adding other tech stocks
+might help diversify still, but very little given high correlation.
 KO and JNJ, although less efficient returnwise, might still play a role reducing portfolio risk given lower correlation
 through diversification.
 """
@@ -281,8 +291,6 @@ sns.scatterplot(x=risk,y=ret)
 for ticker in risk.index:
   plt.annotate(ticker,(risk[ticker],ret[ticker]))
 
-
-#title and labels
 plt.title(
   f"Annual Stock Risk vs Return ("
 )
@@ -293,6 +301,68 @@ plt.ylabel("Average Return")
 plt.show()
 
 #This graph helps visualize the Sharpe ratios. Shows risk adjusted return, and help visualize why Google
-#has the best ratio.It has way more return than risk taken whereas although Tesla gives more 
-#return, it makes you assume way more risk. Almost as much risk in proportion to return.
+#has the best ratio.It has way more return than risk taken whereas although Tesla gives more
 
+#Therefore, google stock uses risk more effectively.
+#Now lets check drawdown series (computed daily)
+cumulative_returns=(1+returns).cumprod()
+running_max=cumulative_returns.cummax()
+Drawdown=(cumulative_returns-running_max)/running_max
+print(Drawdown)
+
+window=30
+
+plt.figure(figsize=(12,6)) #Dates looked cluttered
+
+#Format Dates (Dates looked too cluttered)
+ax = plt.gca()
+ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))   # every 3 months
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))   # format YYYY-MM
+
+#Back to using to see stuff evolve in time, so lineplot again
+sns.lineplot(data=Drawdown)
+plt.xlabel("Date")
+plt.ylabel("Drawdown")
+plt.show()
+
+#Now we can see how much of the peak value has been lost. Complementing our
+#volatility and risk observations, Tesla has been shown to lose as much
+#as 55% of the peak value at that datapoint (Around May 2024). So
+#Tesla has extreme downside risk.
+#Then we have google as 2nd and JNJ as 3rd for stocks who lose most value
+#in proportion to their pick at their point in time.
+
+
+#Moving on to Rolling Volatility:
+rolling_volatility=returns.rolling(window).std()*252**(1/2)
+print(rolling_volatility)
+
+plt.figure(figsize=(12,6)) #Dates looked cluttered
+
+#Format Dates (Dates looked too cluttered)
+ax = plt.gca()
+ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))   # every 3 months
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))   # format YYYY-MM
+
+#Back to using to see stuff evolve in time, so lineplot again
+sns.lineplot(data=rolling_volatility)
+plt.xlabel("Date")
+plt.ylabel("Volatility")
+plt.show()
+
+#Hm, now that I look at plotted rolling volatility, it seemss Google was actually more
+#volatile than JNJ and Microsoft. Also it seems like between May and June 2025.
+
+print("Key Findings: Tesla has both the largest returns and the largest drawdowns."
+      "Google has the highest volatility. JNJ remains the most stable stock with the lowest volatility and minor drawdowns."
+      "Risk adjusted returns suggest Google as the winner.")
+
+print("Conclusion: While Tesla offers high returns, its extreme downturns might make it unappealing to conservative investors"
+"Google provides a balance between growth and risk. Whereas stocks like JNJ might serve as defensive assets."
+"Investors should not consider returns alone, but how much risk is being added to achieve them.")
+
+
+
+
+
+#return, it makes you assume way more risk. Almost as much risk in proportion to return.
