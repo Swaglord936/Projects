@@ -4,7 +4,7 @@
   "metadata": {
     "colab": {
       "provenance": [],
-      "authorship_tag": "ABX9TyNxafuU2wLduauz2Uo6l6T8",
+      "authorship_tag": "ABX9TyPMh01qI04YNbA92qdz8tVf",
       "include_colab_link": true
     },
     "kernelspec": {
@@ -342,8 +342,6 @@
         "\n",
         "\n",
         "#Website performance\n",
-        "\n",
-        "\n",
         "by_web = summarize_by(df, \"WebId\")\n",
         "\n",
         "print(\"Top websites by profit\")\n",
@@ -632,6 +630,7 @@
     {
       "cell_type": "code",
       "source": [
+        "#@title Insight 1 - League 5 Performance\n",
         "by_web[\"stake_rank\"] = by_web[\"stake_sgd\"].rank(ascending=False)\n",
         "by_web[\"profit_rank\"] = by_web[\"profit_sgd\"].rank(ascending=False)\n",
         "by_web[\"margin_rank\"] = by_web[\"margin\"].rank(ascending=False)\n",
@@ -697,7 +696,7 @@
         "0          3  30921  1.234573e+06   43726.115041  0.035418\n",
         "4         13  25782  1.243536e+06  207972.365275  0.167243\n",
         "\"\"\"\n",
-        "#Ok, insight 2 is that low website margins are concentrated in specific leagues.\n",
+        "#Ok, low website margins are concentrated in specific leagues.\n",
         "#Mainly league 5, which has a negative margin. As well as leagues with margins\n",
         "#below 5% such as leagues 6,3 and 1.\n",
         "\n",
@@ -896,7 +895,7 @@
     {
       "cell_type": "code",
       "source": [
-        "#Insight 2 - Website Efficiency\n",
+        "#@title Insight 2 - Website Efficiency\n",
         "focus_webs = [\"Web_008\", \"Web_006\", \"Web_009\"]\n",
         "\n",
         "print(\n",
@@ -1053,7 +1052,7 @@
     {
       "cell_type": "code",
       "source": [
-        "#Insight 3 - Player Concentration\n",
+        "#@title Insight 3 - Player Concentration + High Stake vs Low\n",
         "#Same username could be found in more than 1 website\n",
         "by_user = summarize_by(df, [\"WebId\", \"UserName\"])\n",
         "print(by_user.head())\n",
@@ -1401,7 +1400,7 @@
     {
       "cell_type": "code",
       "source": [
-        "#Insight 4 - Volatility\n",
+        "#@title Insight 4 - Volatility\n",
         "#I can use the sharpe ratio logic for this.\n",
         "#Return to risk ratio:\n",
         "\n",
@@ -1470,13 +1469,14 @@
     {
       "cell_type": "code",
       "source": [
+        "#@title insight 5 - Live vs pre\n",
         "\"\"\"\n",
         "Other potential good insights:\n",
         "1-Live generates less money than pre\n",
         "2-Are certain odds less profitable for house? (Odd buckets)\n",
         "3-Which bet types are more profitables or risky?\n",
         "\"\"\"\n",
-        "#Insight 4 - Live Generates less money than pre.\n",
+        "#Live Generates less money than pre?\n",
         "#Data has either 0 or 1 for non-live or live. So LiveIndicator is key.\n",
         "\n",
         "by_live = summarize_by(df, \"LiveIndicator\")\n",
@@ -1566,7 +1566,7 @@
     {
       "cell_type": "code",
       "source": [
-        "#Insight 5 - Are certain odds less profitable for house? (Odd buckets)\n",
+        "#@title Insight 6 - Are certain odds less profitable for house? (Odd buckets)\n",
         "\n",
         "#Lets bucket them, easier to see patterns:\n",
         "print(df[\"Odds\"].describe())\n",
@@ -1923,6 +1923,7 @@
     {
       "cell_type": "code",
       "source": [
+        "#@title Insight 6: Growth Investment\n",
         "#Since we already saw player concentration in terms of profit,\n",
         "#maybe we can now start answering the question of:\n",
         "#Are most players concentrated in a few leagues?\n",
